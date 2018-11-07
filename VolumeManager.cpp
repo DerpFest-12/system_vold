@@ -75,6 +75,10 @@ static const char* kPropVirtualDisk = "persist.sys.virtual_disk";
 /* 512MiB is large enough for testing purposes */
 static const unsigned int kSizeVirtualDisk = 536870912;
 
+static const unsigned int kMajorBlockMmc = 179;
+static const unsigned int kMajorBlockExperimentalMin = 240;
+static const unsigned int kMajorBlockExperimentalMax = 254;
+
 VolumeManager *VolumeManager::sInstance = NULL;
 
 VolumeManager *VolumeManager::Instance() {
@@ -195,12 +199,12 @@ void VolumeManager::handleBlockEvent(NetlinkEvent *evt) {
                 // emulator-specific; see Disk.cpp for details) and UFS card
                 // devices are SD, and that everything else is USB
                 int flags = source->getFlags();
-                if (major == android::vold::Disk::kMajorBlockMmc
+                if (major == kMajorBlockMmc
                     || (eventPath.find("ufs") != std::string::npos)
-                    || android::vold::Disk::isVirtioBlkDevice(major)) {
+                    || (android::vold::IsRunningInEmulator()
+                    && major >= (int) kMajorBlockExperimentalMin
+                    && major <= (int) kMajorBlockExperimentalMax)) {
                     flags |= android::vold::Disk::Flags::kSd;
-                } else if (major == android::vold::Disk::kMajorBlockCdrom) {
-                    flags |= android::vold::Disk::Flags::kCdrom;
                 } else {
                     flags |= android::vold::Disk::Flags::kUsb;
                 }
@@ -626,8 +630,7 @@ int VolumeManager::unmountAll() {
     while ((mentry = getmntent(fp)) != NULL) {
         auto test = std::string(mentry->mnt_dir);
         if ((android::base::StartsWith(test, "/mnt/") &&
-             !android::base::StartsWith(test, "/mnt/vendor") &&
-             !android::base::StartsWith(test, "/mnt/product")) ||
+             !android::base::StartsWith(test, "/mnt/vendor")) ||
             android::base::StartsWith(test, "/storage/")) {
             toUnmount.push_front(test);
         }
