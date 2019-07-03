@@ -793,6 +793,5 @@ status_t WaitForFile(const char* filename, std::chrono::nanoseconds timeout) {
     return -1;
 
 }
-
 }  // namespace vold
 }  // namespace android
